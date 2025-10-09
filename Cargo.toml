@@ -1,0 +1,28 @@
+[package]
+name = "de-based-swarm-drone-attack"
+version = "0.1.0"
+edition = "2024"
+
+[profile.dev]
+opt-level = 1
+debug = true
+incremental = true
+
+[profile.release]
+codegen-units = 1
+lto = true
+strip = true
+panic = "abort"
+
+[dependencies]
+bevy = { version = "0.17.1", default-features = false, features = [
+    "bevy_core_pipeline",
+    "bevy_pbr",
+    "bevy_render",
+    "bevy_winit",
+    "bevy_asset",
+    "bevy_window",
+    "bevy_camera",
+    "bevy_mesh",
+] }
+rand = "0.9.2"
