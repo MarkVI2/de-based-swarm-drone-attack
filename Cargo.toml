@@ -1,6 +1,6 @@
 [package]
 name = "de-based-swarm-drone-attack"
-version = "0.1.0"
+version = "0.1.5"
 edition = "2024"
 
 [profile.dev]

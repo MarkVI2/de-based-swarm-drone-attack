@@ -15,7 +15,7 @@ pub struct Drone {
 #[derive(Component)]
 pub struct Adversary;
 
-const GRID_SIZE: f32 = 50.0;
+const GRID_SIZE: f32 = 60_000.0; // 60 km to accommodate 25 km target + margin
 const METERS_PER_UNIT: f32 = 1.0;
 const METERS_PER_KILOMETER: f32 = 1_000.0;
 const DRONE_COUNT: usize = 42;
@@ -24,7 +24,7 @@ const DRONE_BASE_ALTITUDE_METERS: f32 = 60.0;
 const DRONE_MAX_ALTITUDE_METERS: f32 = 120.0;
 const DRONE_RADIUS_METERS: f32 = 0.6;
 const TARGET_DISTANCE_KM: f32 = 25.0;
-const GRID_CELL_METERS: f32 = 5.0;
+const GRID_CELL_METERS: f32 = 1_000.0; // 1 km grid cells for large-scale view
 
 #[derive(Resource, Default)]
 struct SwarmEntities {
@@ -67,15 +67,19 @@ fn setup_scene(
     let grid_texture = generate_grid_texture(&mut images);
     let repeats = GRID_SIZE / GRID_CELL_METERS;
     let floor_material = materials.add(StandardMaterial {
-        base_color: Color::WHITE,
+        base_color: Color::srgb(1.0, 1.0, 1.0),
         base_color_texture: Some(grid_texture),
-        unlit: true,
+        emissive: Color::srgb(0.05, 0.05, 0.05).into(),
+        perceptual_roughness: 0.9,
+        metallic: 0.0,
         uv_transform: Affine2::from_scale(Vec2::splat(repeats)),
         ..default()
     });
     let wall_material = materials.add(StandardMaterial {
-        base_color: Color::srgba(0.95, 0.93, 0.88, 0.65),
-        unlit: true,
+        base_color: Color::srgb(0.95, 0.93, 0.88),
+        emissive: Color::srgb(0.1, 0.1, 0.08).into(),
+        perceptual_roughness: 0.8,
+        metallic: 0.0,
         alpha_mode: AlphaMode::Blend,
         ..default()
     });
@@ -115,18 +119,29 @@ fn setup_scene(
         ..default()
     });
     let drone_material = materials.add(StandardMaterial {
-        base_color: Color::srgba(0.1, 0.3, 0.9, 1.0),
-        unlit: true,
+        base_color: Color::srgb(0.1, 0.3, 0.9),
+        emissive: Color::srgb(0.05, 0.15, 0.5).into(),
+        perceptual_roughness: 0.5,
+        metallic: 0.1,
         ..default()
     });
 
-    let drone_offsets = fibonacci_sphere_points(DRONE_COUNT, DRONE_SWARM_RADIUS_METERS);
+    // Add point light for proper PBR rendering
+    commands.spawn((
+        PointLight {
+            intensity: 5_000_000.0,
+            range: 100_000.0,
+            shadows_enabled: false,
+            ..default()
+        },
+        Transform::from_xyz(0.0, 10_000.0, 0.0),
+    ));
+
+    let drone_offsets = fibonacci_disc_points(DRONE_COUNT, DRONE_SWARM_RADIUS_METERS);
     for offset in drone_offsets {
-        let altitude =
-            (DRONE_BASE_ALTITUDE_METERS + offset.y).clamp(0.0, DRONE_MAX_ALTITUDE_METERS);
         let world_position = Vec3::new(
             meters_to_units(offset.x),
-            meters_to_units(altitude),
+            meters_to_units(DRONE_BASE_ALTITUDE_METERS),
             meters_to_units(offset.z),
         );
 
@@ -149,8 +164,10 @@ fn setup_scene(
         ..default()
     });
     let target_material = materials.add(StandardMaterial {
-        base_color: Color::srgba(0.8, 0.05, 0.1, 1.0),
-        unlit: true,
+        base_color: Color::srgb(0.9, 0.05, 0.1),
+        emissive: Color::srgb(0.5, 0.02, 0.05).into(),
+        perceptual_roughness: 0.4,
+        metallic: 0.2,
         ..default()
     });
 
@@ -215,24 +232,21 @@ fn generate_grid_texture(images: &mut Assets<Image>) -> Handle<Image> {
     images.add(image)
 }
 
-fn fibonacci_sphere_points(count: usize, radius_meters: f32) -> Vec<Vec3> {
+fn fibonacci_disc_points(count: usize, radius_meters: f32) -> Vec<Vec3> {
     if count == 0 {
         return Vec::new();
     }
 
     let mut points = Vec::with_capacity(count);
     let golden_angle = std::f32::consts::PI * (3.0 - 5.0_f32.sqrt());
-    let count_f = count as f32;
 
     for i in 0..count {
         let i_f = i as f32;
-        let fraction = (i_f + 0.5) / count_f;
-        let y = 1.0 - 2.0 * fraction;
-        let radius = (1.0 - y * y).max(0.0).sqrt();
+        let r = radius_meters * (i_f / count as f32).sqrt();
         let theta = golden_angle * i_f;
-        let x = theta.cos() * radius;
-        let z = theta.sin() * radius;
-        points.push(Vec3::new(x, y, z) * radius_meters);
+        let x = r * theta.cos();
+        let z = r * theta.sin();
+        points.push(Vec3::new(x, 0.0, z));
     }
 
     points
