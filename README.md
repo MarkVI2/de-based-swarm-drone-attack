@@ -4,6 +4,62 @@ Taken from SIH2025 problem statements Problem statement: Designing an Efficient
 Algorithm for Coordinated Swarm Engagement among Autonomous Drones aiming to
 neutralize an adversarial drone swarm.
 
+## Recent Updates (Oct 9, 2025)
+
+### Migration from Bevy to three-d Renderer
+
+- **Reason**: Resolved pink/magenta color rendering issues on macOS M2 Metal
+- **Benefits**:
+  - Proper color rendering (blue drones, red target, black grid)
+  - 10x faster compile times (~27s vs ~5min for release builds)
+  - Simpler API and better Metal compatibility
+
+### Current Scene Setup
+
+- **Grid**: 60 km × 60 km × 200m arena with three visible grid planes (floor,
+  back wall, left wall)
+  - Floor: XZ plane at y=0
+  - Back wall: XY plane at z=-30km
+  - Left wall: YZ plane at x=-30km
+  - Cell size: 1 km × 1 km
+- **Drone Swarm**: 42 blue spheres in flat horizontal disc
+  - Radius: 8m
+  - Altitude: **Randomized** between 60-120m on each run
+  - All drones at same altitude (flat disc formation)
+- **Target**: Red sphere (adversary)
+  - Distance: **Randomized** between 20-40 km on each run
+  - Altitude: **Randomized** between 60-120m on each run
+  - Direction: Random angle
+- **Environmental Constraints**:
+  - Hard altitude ceiling: 120m (enforced for all entities)
+  - Scale: Meters for altitude, kilometers for horizontal distance
+- **Controls**: Orbit camera (left drag), pan (right drag), zoom (W/S or arrows)
+
+### Project Structure
+
+```
+src/
+├── main.rs       # Entry point & render loop
+├── camera.rs     # OrbitControl camera
+├── entities.rs   # Drone/target data structures
+├── rendering.rs  # Grid/drone/target renderers
+└── scene.rs      # Scene coordination
+```
+
+### Building & Running
+
+```bash
+# Quick check
+cargo check
+
+# Development
+cargo run
+
+# Optimized release
+cargo build --release --target aarch64-apple-darwin
+./target/aarch64-apple-darwin/release/de-based-swarm-drone-attack
+```
+
 ## Intro
 
 This repository tracks work toward a decentralized swarm maneuver algorithm for
