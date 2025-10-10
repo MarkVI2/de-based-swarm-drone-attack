@@ -10,6 +10,7 @@ pub struct Scene {
     target_renderer: TargetRenderer,
     ambient_light: AmbientLight,
     directional_light: DirectionalLight,
+    updates_per_frame: u32, // Number of simulation updates per render frame (speed multiplier)
 }
 
 impl Scene {
@@ -44,11 +45,49 @@ impl Scene {
             target_renderer,
             ambient_light,
             directional_light,
+            updates_per_frame: 1, // One update per frame by default (1x speed)
         }
     }
 
-    pub fn update(&mut self, _context: &Context) {
-        // Future: update drone positions here
+    pub fn update(&mut self, _context: &Context, events: &[Event]) {
+        // Handle keyboard events for time speed control
+        for event in events {
+            if let Event::KeyPress { kind, modifiers, .. } = event {
+                match kind {
+                    Key::A => {
+                        if modifiers.shift {
+                            // Shift+A (capital A) - Slow down (divide by 2)
+                            self.updates_per_frame = (self.updates_per_frame / 2).max(1); // Min 1 update (can't go slower than real-time)
+                            println!("⏱️  Simulation speed: {}x (SLOWER - {} update{}/frame)", 
+                                self.updates_per_frame, 
+                                self.updates_per_frame,
+                                if self.updates_per_frame == 1 { "" } else { "s" });
+                        } else {
+                            // 'a' - Speed up (multiply by 2)
+                            self.updates_per_frame = (self.updates_per_frame * 2).min(16); // Max 16 updates/frame
+                            println!("⏱️  Simulation speed: {}x (FASTER - {} update{}/frame)", 
+                                self.updates_per_frame, 
+                                self.updates_per_frame,
+                                if self.updates_per_frame == 1 { "" } else { "s" });
+                        }
+                    }
+                    Key::R => {
+                        // 'r' - Reset to normal speed
+                        self.updates_per_frame = 1;
+                        println!("⏱️  Simulation speed: RESET to 1x");
+                    }
+                    _ => {}
+                }
+            }
+        }
+
+        // Run multiple updates per frame if speed is increased
+        for _ in 0..self.updates_per_frame {
+            // Update drone positions using DE path planning
+            self.swarm_state.update_drones();
+        }
+        
+        // Update renderer with new positions (only once per render frame)
         let drone_positions: Vec<glam::Vec3> =
             self.swarm_state.drones.iter().map(|d| d.position).collect();
         self.drone_renderer.update_positions(&drone_positions);

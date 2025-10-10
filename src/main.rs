@@ -2,6 +2,7 @@ mod camera;
 mod entities;
 mod rendering;
 mod scene;
+mod de_path_planner;
 
 use three_d::*;
 
@@ -25,7 +26,7 @@ fn main() {
         scene_camera.set_viewport(frame_input.viewport);
         scene_camera.update(&mut frame_input.events);
 
-        scene.update(&context);
+        scene.update(&context, &frame_input.events);
 
         frame_input
             .screen()
